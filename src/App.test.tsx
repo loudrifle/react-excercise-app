@@ -4,6 +4,6 @@ import App from './App';
 
 test('renders add note button', () => {
   render(<App />);
-  const button = screen.getByText(/add a new note/i);
+  const button = screen.getByText(/add note/i);
   expect(button).toBeInTheDocument();
 });
