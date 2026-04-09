@@ -1,82 +1,37 @@
 import { useForm } from "react-hook-form";
+import type { Input, InputConstraint, InputParameters } from "./form.constraints";
+import { Constraints, constraintsMessages } from "./form.constraints";
 
-export enum Constraints {
-  TOO_SHORT = "TOO_SHORT",
-  NOT_UNIQUE = "NOT_UNIQUE",
-}
-
-type ConstraintsArgs = {
-  [Constraints.TOO_SHORT]: [characterLimit?: number];
-  [Constraints.NOT_UNIQUE]: [existingValues?: string[]];
-};
-
-type ConstraintFn<key extends Constraints> = (
-  value: string,
-  ...args: ConstraintsArgs[key]
-) => string | null;
-
-const constraintsMessages: { [key in Constraints]: ConstraintFn<key> } = {
-  [Constraints.TOO_SHORT]: (value, characterLimit = 1) =>
-    value.trim().length < characterLimit
-      ? `Minimum character allowed is ${characterLimit}`
-      : null,
-  [Constraints.NOT_UNIQUE]: (value, existingValues: string[] = []) =>
-    existingValues.includes(value)
-      ? `This value "${value}" already exists`
-      : null,
-};
-
-type ErrorMessage<key extends Constraints = Constraints> = {
-  code: key;
-  message: ReturnType<(typeof constraintsMessages)[key]>;
-};
-
-type InputConstraint<key extends Constraints = Constraints> = {
-  code: key;
-  args?: ConstraintsArgs[key];
-};
-
-type InputParameters = {
-  label: string;
-  required?: boolean;
-  constraints?: InputConstraint[];
-};
-
-type Input = {
-  [key: string]: InputParameters;
-};
-
-const validateField = (
-  input: InputParameters,
-  value: string
-): ErrorMessage[] => {
-  const errors: ErrorMessage[] = [];
-
-  // check required
-  if (input.required && !value?.trim()) {
-    errors.push({
-      code: Constraints.TOO_SHORT,
-      message: "This field is required",
-    });
-  }
-
-  if (input.constraints) {
-    for (const constraint of input.constraints) {
-      const message = runConstraint(constraint, value);
-      if (message) errors.push({ code: constraint.code, message });
-    }
-  }
-
-  return errors;
-};
+export { Constraints } from "./form.constraints";
+export type { Input, InputParameters, InputConstraint } from "./form.constraints";
 
 function runConstraint<K extends Constraints>(
   constraint: InputConstraint<K>,
   value: string
 ): string | null {
-  const fn: ConstraintFn<K> = constraintsMessages[constraint.code];
+  const fn = constraintsMessages[constraint.code];
   return fn(value, ...(constraint.args ?? []));
 }
+
+const validateField = (
+  input: InputParameters,
+  value: string
+): string[] => {
+  const errors: string[] = [];
+
+  if (input.required && !value?.trim()) {
+    errors.push("This field is required");
+  }
+
+  if (input.constraints) {
+    for (const constraint of input.constraints) {
+      const message = runConstraint(constraint, value);
+      if (message) errors.push(message);
+    }
+  }
+
+  return errors;
+};
 
 export const Form = ({ fields }: { fields: Input }) => {
   const {
@@ -85,9 +40,10 @@ export const Form = ({ fields }: { fields: Input }) => {
     formState: { errors },
   } = useForm<{ [key: string]: string }>({ mode: "onBlur" });
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: Record<string, string>) => {
     console.log(data);
   };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} style={{ display: "inline-block" }}>
       {Object.entries(fields).map(([name, params]) => (
@@ -98,10 +54,9 @@ export const Form = ({ fields }: { fields: Input }) => {
             id={name}
             {...register(name, {
               validate: (value) => {
-                const errors = validateField(params, value);
-                if (errors.length > 0) {
-                  // Creiamo un oggetto con tutti i messaggi
-                  return errors.map((e) => e.message).join(", ");
+                const fieldErrors = validateField(params, value);
+                if (fieldErrors.length > 0) {
+                  return fieldErrors.join(", ");
                 }
                 return true;
               },

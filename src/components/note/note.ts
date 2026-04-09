@@ -5,11 +5,6 @@ interface NoteProps {
   date_updated: Date;
 }
 
-export const Note = ({
-  title,
-  description,
-  data_creation,
-  date_updated,
-}: NoteProps) => {
-  return;
+export const Note = (_props: NoteProps) => {
+  return null;
 };
